@@ -1,0 +1,93 @@
+FUNCTION_BLOCK controlador	// Block definition (there may be more than one block per file)
+
+// Definição das variáveis de entrada
+VAR_INPUT				
+	umidade : REAL;	 // Medida em valor de resistência elétrica
+	temperatura : REAL;      // Medida em graus Celcius
+	luminosidade : REAL;
+	//horario : REAL;	
+END_VAR
+
+// Definição da variável de saída
+VAR_OUTPUT				
+	potenciaIrrigacao : REAL;
+END_VAR
+
+FUZZIFY temperatura 
+	TERM muitoBaixa := (0.0, 1) (0.0, 1) (5.0, 1) (10.0, 0); 	
+	TERM baixa := (6.0, 0) (10.0, 1) (18.0, 1) (22.0, 0) ; 
+	TERM mediana := (17.0, 0) (21.0,1) (29.0,1) (33.0,0);
+	TERM alta := (28.0, 0) (32.0, 1) (40.0, 1) (44.0, 0);
+	TERM muitoAlta := (39.0, 0) (43.0, 1)(50.0, 1)(50.0, 1);	
+END_FUZZIFY
+
+FUZZIFY luminosidade	//Quanto maior, menos luminosidade. 
+	TERM alta := (0.0, 1) (0.0, 1) (150.0, 1)(300.0, 0) ; 
+	TERM mediana := (150.0, 0) (300.0, 1) (450.0, 1) (600.0, 0) ;
+	TERM baixa := (450.0, 0) (600.0,1) (750.0,1) (900.0,0);
+	TERM inexistente := (750.0, 0) (900.0, 1) (1023.0, 1);
+END_FUZZIFY
+
+FUZZIFY umidade	// Quanto maior é a resistência elétrica, menor eletricidade e menor a quantidade de água no solo.	
+	TERM muitoUmido := (0.0, 1) (0.0, 1) (1.0, 1) (1.5, 0); 
+	TERM umido := (1.0, 0) (1.5, 1) (2.0, 1) (2.5, 0) ;
+	TERM poucoUmido := (2.0, 0) (2.5,1) (3.0,1) (3.5,0);
+	TERM seco := (3.0, 0) (3.5, 1) (4.2, 1);
+END_FUZZIFY
+
+// Defuzzificação
+DEFUZZIFY potenciaIrrigacao			
+	TERM desligada := (0.0,0)(5.0,1) (10.0,0) (10.0,0);
+	TERM fraca := (6.0,0) (12.0,1) (17.0,0) (17.0,0);
+	TERM media := (13.0,0) (18.0,1) (23.0,0) (23.0,0);
+	TERM forte := (19.0,0) (24.0,1) (29.0,1) (35.0,1);
+	METHOD : COG;		// Método de defuzzificação: centro de gravidade
+	DEFAULT := 0;		// Valor padrão de saída caso nenhuma regra seja ativada
+END_DEFUZZIFY
+
+// Base de regras para inferência
+RULEBLOCK No1
+	AND : MIN;	
+	ACT : MIN;	
+	ACCU : MAX;	
+
+	RULE 1 : IF temperatura IS muitoBaixa AND umidade IS muitoUmido AND luminosidade IS inexistente THEN potenciaIrrigacao IS desligada;
+	RULE 2 : IF temperatura IS muitoBaixa AND umidade IS muitoUmido AND luminosidade IS baixa THEN potenciaIrrigacao IS desligada;
+	RULE 3 : IF temperatura IS baixa AND umidade IS muitoUmido AND luminosidade IS baixa THEN potenciaIrrigacao IS desligada;
+	RULE 4 : IF temperatura IS mediana AND umidade IS poucoUmido AND luminosidade IS mediana THEN potenciaIrrigacao IS fraca;
+	RULE 5 : IF temperatura IS mediana AND umidade IS umido AND luminosidade IS mediana THEN potenciaIrrigacao IS fraca;
+	RULE 6 : IF temperatura IS alta AND umidade IS seco AND luminosidade IS mediana THEN potenciaIrrigacao IS forte;
+	RULE 7 : IF temperatura IS muitoAlta AND umidade IS seco AND luminosidade IS alta THEN potenciaIrrigacao IS forte;
+	RULE 8 : IF temperatura IS alta AND umidade IS muitoUmido AND luminosidade IS alta THEN potenciaIrrigacao IS desligada;
+	RULE 9 : IF temperatura IS alta AND umidade IS umido AND luminosidade IS alta THEN potenciaIrrigacao IS fraca;
+	RULE 10 : IF temperatura IS alta AND umidade IS poucoUmido AND luminosidade IS mediana THEN potenciaIrrigacao IS media; 
+	RULE 11 : IF temperatura IS muitoAlta AND umidade IS seco AND luminosidade IS baixa THEN potenciaIrrigacao IS forte;
+	RULE 12 : IF temperatura IS baixa AND umidade IS seco AND luminosidade IS baixa THEN potenciaIrrigacao IS fraca;
+	RULE 13 : IF temperatura IS baixa AND umidade IS umido AND luminosidade IS inexistente THEN potenciaIrrigacao IS desligada;
+	RULE 14 : IF temperatura IS alta AND umidade IS umido AND luminosidade IS mediana THEN potenciaIrrigacao IS fraca;
+	RULE 15 : IF temperatura IS mediana AND umidade IS seco AND luminosidade IS inexistente THEN potenciaIrrigacao IS desligada;
+	RULE 16 : IF temperatura IS baixa AND umidade IS poucoUmido AND luminosidade IS mediana THEN potenciaIrrigacao IS fraca;
+	RULE 17 : IF temperatura IS muitoBaixa AND umidade IS poucoUmido AND luminosidade IS baixa THEN potenciaIrrigacao IS desligada;
+	RULE 18 : IF temperatura IS muitoBaixa AND umidade IS seco AND luminosidade IS alta THEN potenciaIrrigacao IS fraca;
+	RULE 19 : IF temperatura IS muitoAlta AND umidade IS poucoUmido AND luminosidade IS baixa THEN potenciaIrrigacao IS fraca;
+	RULE 20 : IF temperatura IS muitoAlta AND umidade IS umido AND luminosidade IS baixa THEN potenciaIrrigacao IS fraca;
+	RULE 21 : IF temperatura IS muitoBaixa AND umidade IS seco AND luminosidade IS baixa THEN potenciaIrrigacao IS desligada;
+	RULE 22 : IF temperatura IS alta AND umidade IS seco AND luminosidade IS alta THEN potenciaIrrigacao IS forte;
+	RULE 23 : IF temperatura IS alta AND umidade IS seco AND luminosidade IS inexistente THEN potenciaIrrigacao IS desligada;
+	RULE 24 : IF temperatura IS alta AND umidade IS seco AND luminosidade IS mediana THEN potenciaIrrigacao IS media;
+	RULE 25 : IF temperatura IS alta AND umidade IS seco AND luminosidade IS baixa THEN potenciaIrrigacao IS fraca;
+	RULE 26 : IF temperatura IS mediana AND umidade IS poucoUmido AND luminosidade IS alta THEN potenciaIrrigacao IS media;
+	RULE 27 : IF temperatura IS muitoAlta AND umidade IS umido AND luminosidade IS alta THEN potenciaIrrigacao IS media;
+	RULE 28 : IF temperatura IS muitoBaixa AND umidade IS umido AND luminosidade IS alta THEN potenciaIrrigacao IS desligada;
+	RULE 29 : IF temperatura IS mediana AND umidade IS seco AND luminosidade IS alta THEN potenciaIrrigacao IS media;
+	RULE 30 : IF temperatura IS baixa AND umidade IS seco AND luminosidade IS alta THEN potenciaIrrigacao IS fraca;
+	RULE 31 : IF temperatura IS muitoBaixa AND umidade IS seco AND luminosidade IS alta THEN potenciaIrrigacao IS fraca;
+	RULE 32 : IF temperatura IS alta AND umidade IS poucoUmido AND luminosidade IS alta THEN potenciaIrrigacao IS media;
+	RULE 33 : IF temperatura IS mediana AND umidade IS poucoUmido AND luminosidade IS alta THEN potenciaIrrigacao IS fraca;
+	RULE 34 : IF temperatura IS mediana AND umidade IS seco AND luminosidade IS mediana THEN potenciaIrrigacao IS fraca;
+	RULE 35 : IF temperatura IS baixa AND umidade IS poucoUmido AND luminosidade IS alta THEN potenciaIrrigacao IS fraca;
+	RULE 36 : IF temperatura IS muitoAlta AND umidade IS muitoUmido AND luminosidade IS alta THEN potenciaIrrigacao IS desligada;
+		
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
